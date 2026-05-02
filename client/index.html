@@ -1,0 +1,55 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Chat App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login">
+    <h2>Welcome to Chat</h2>
+    <input id="email" placeholder="Enter email (rahul@chat.com)" />
+    <button onclick="login()">Enter</button>
+</div>
+
+<!-- CHAT APP -->
+<div id="chat" style="display:none;">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h3>Users</h3>
+        <div id="users"></div>
+    </div>
+
+    <!-- MAIN CHAT AREA -->
+    <div class="chat-area">
+
+        <!-- HEADER -->
+        <div class="chat-header">
+            <span id="chatWith">Select a user</span>
+        </div>
+
+        <!-- MESSAGES -->
+        <div id="messages"></div>
+
+        <!-- INPUT -->
+        <div class="input-area">
+            <input id="msg" placeholder="Type message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
+```
