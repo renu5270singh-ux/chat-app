@@ -7,8 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ FIXED static path
-app.use(express.static(path.join(__dirname, '../client')));
+// ✅ Serve static files
+app.use(express.static(path.join(__dirname, 'client')));
+
+// ✅ Serve index.html on root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client', 'index.html'));
+});
 
 let users = {}; // email -> socket.id
 
@@ -36,7 +41,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// ✅ FIXED port for deployment
+// ✅ MUST use dynamic port (Render fix)
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, '0.0.0.0', () => {
