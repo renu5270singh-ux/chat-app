@@ -1,94 +1,146 @@
+// 🔌 Connect to Socket.IO
 const socket = io();
 
-let myEmail = '';
-let selectedUser = '';
+// 👤 User state
+let myEmail = "";
+let selectedUser = "";
 
+// 🔥 Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyCaQswbaEHAjvn90JuFc8xs7ZE3Z3749WM",
+  authDomain: "chat-app-chatex.firebaseapp.com",
+  projectId: "chat-app-chatex",
+  storageBucket: "chat-app-chatex.firebasestorage.app",
+  messagingSenderId: "922683934516",
+  appId: "1:922683934516:web:2a4e396febbc16f8398761",
+  measurementId: "G-XW89SYZMKC"
+};
+
+// 🔥 Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+
+// ================= LOGIN =================
 window.login = function () {
-    myEmail = document.getElementById('email').value.trim();
+    const email = document.getElementById('email').value.trim();
 
-    if (!myEmail) {
-        alert('Enter email');
+    if (!email || !email.includes("@")) {
+        alert("Enter valid email");
         return;
     }
 
-    socket.emit('join', myEmail);
+    myEmail = email;
 
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('chat').style.display = 'flex';
+    socket.emit("join", myEmail);
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "flex";
 };
 
-window.sendMessage = function () {
-    const input = document.getElementById('msg');
-    const message = input.value.trim();
 
-    if (!message) return;
-
-    if (!selectedUser) {
-        alert('Select a user first');
-        return;
-    }
-
-    socket.emit('private message', {
-        to: selectedUser,
-        message: message,
-        from: myEmail
-    });
-
-    addMessage(message, myEmail);
-    input.value = '';
-};
-
-socket.on('user list', (users) => {
-    const list = document.getElementById('users');
-    list.innerHTML = '';
+// ================= USER LIST =================
+socket.on("user list", (users) => {
+    const list = document.getElementById("users");
+    list.innerHTML = "";
 
     users.forEach(user => {
         if (user !== myEmail) {
-            const div = document.createElement('div');
-            div.textContent = user;
-            div.className = 'user';
-
-            div.onclick = () => {
-                selectedUser = user;
-
-                document.getElementById('chatWith').textContent = user;
-                document.getElementById('messages').innerHTML = '';
-
-                socket.emit('load messages', {
-                    to: selectedUser,
-                    from: myEmail
-                });
-            };
-
+            const div = document.createElement("div");
+            div.innerHTML = `🟢 ${user}`;
+            div.onclick = () => selectUser(user);
             list.appendChild(div);
         }
     });
 });
 
-socket.on('private message', ({ message, from }) => {
-    addMessage(message, from);
+
+// ================= SELECT USER =================
+function selectUser(user) {
+    selectedUser = user;
+    document.getElementById("messages").innerHTML = "";
+    loadMessages(); // 🔥 load history
+}
+
+
+// ================= SEND MESSAGE =================
+function sendMessage() {
+    const input = document.getElementById("msg");
+    const message = input.value.trim();
+
+    if (!message || !selectedUser) return;
+
+    const msgData = {
+        from: myEmail,
+        to: selectedUser,
+        message: message,
+        time: Date.now()
+    };
+
+    // 🔌 Real-time send
+    socket.emit("private message", msgData);
+
+    // 🔥 Save to Firebase
+    db.collection("messages").add(msgData);
+
+    input.value = "";
+}
+
+
+// ================= RECEIVE MESSAGE =================
+socket.on("private message", (data) => {
+    if (
+        data.from === selectedUser ||
+        data.from === myEmail
+    ) {
+        addMessage(data.message, data.from, data.time);
+    }
 });
 
-socket.on('chat history', (msgs) => {
-    msgs.forEach(m => {
-        addMessage(m.message, m.from);
-    });
-});
 
-function addMessage(message, sender) {
-    const messagesDiv = document.getElementById('messages');
+// ================= LOAD CHAT HISTORY =================
+function loadMessages() {
+    db.collection("messages")
+      .orderBy("time")
+      .onSnapshot(snapshot => {
 
-    const div = document.createElement('div');
-    div.classList.add('message');
+          const container = document.getElementById("messages");
+          container.innerHTML = "";
+
+          snapshot.forEach(doc => {
+              const data = doc.data();
+
+              if (
+                  (data.from === myEmail && data.to === selectedUser) ||
+                  (data.from === selectedUser && data.to === myEmail)
+              ) {
+                  addMessage(data.message, data.from, data.time);
+              }
+          });
+      });
+}
+
+
+// ================= ADD MESSAGE TO UI =================
+function addMessage(message, sender, time) {
+    const div = document.createElement("div");
+    div.classList.add("message");
 
     if (sender === myEmail) {
-        div.classList.add('me');
+        div.classList.add("me");
     } else {
-        div.classList.add('other');
+        div.classList.add("other");
     }
 
-    div.textContent = message;
+    const date = new Date(time).toLocaleTimeString();
 
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    div.innerHTML = `
+        <div>${message}</div>
+        <small>${date}</small>
+    `;
+
+    document.getElementById("messages").appendChild(div);
+
+    // auto scroll
+    div.scrollIntoView();
 }
