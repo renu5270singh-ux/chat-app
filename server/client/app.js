@@ -9,7 +9,9 @@ const UPLOAD_PRESET = "chatapp";
 const usersDiv = document.getElementById("users");
 const messagesDiv = document.getElementById("messages");
 
+// LOGIN
 function login() {
+
     myEmail = document.getElementById("email").value;
 
     if (!myEmail) return;
@@ -20,6 +22,7 @@ function login() {
     socket.emit("join", myEmail);
 }
 
+// USER LIST
 socket.on("user list", (users) => {
 
     usersDiv.innerHTML = "";
@@ -34,6 +37,7 @@ socket.on("user list", (users) => {
 
         div.innerHTML = `
             <div class="avatar">${user[0].toUpperCase()}</div>
+
             <div>
                 <div>${user}</div>
                 <small class="online">Online</small>
@@ -41,16 +45,21 @@ socket.on("user list", (users) => {
         `;
 
         div.onclick = () => {
+
             currentChat = user;
+
             document.getElementById("chatWith").innerText = user;
+
             loadMessages();
         };
 
         usersDiv.appendChild(div);
+
     });
 
 });
 
+// SEND MESSAGE
 async function sendMessage() {
 
     const input = document.getElementById("msg");
@@ -62,7 +71,7 @@ async function sendMessage() {
     const msg = {
         from: myEmail,
         to: currentChat,
-        text,
+        text: text,
         type: "text",
         time: new Date().toLocaleTimeString()
     };
@@ -76,6 +85,7 @@ async function sendMessage() {
     loadMessages();
 }
 
+// RECEIVE MESSAGE
 socket.on("private message", async (msg) => {
 
     await saveMessage(msg);
@@ -86,13 +96,17 @@ socket.on("private message", async (msg) => {
     ) {
         loadMessages();
     }
+
 });
 
+// SAVE MESSAGE
 async function saveMessage(msg) {
 
     await db.collection("messages").add(msg);
+
 }
 
+// LOAD MESSAGES
 async function loadMessages() {
 
     messagesDiv.innerHTML = "";
@@ -116,6 +130,7 @@ async function loadMessages() {
                 ? "myMessage"
                 : "otherMessage";
 
+        // IMAGE
         if (msg.type === "image") {
 
             div.innerHTML = `
@@ -123,41 +138,58 @@ async function loadMessages() {
                 <div class="time">${msg.time}</div>
             `;
 
-        } else if (msg.type === "pdf") {
+        }
+
+        // PDF
+        else if (msg.type === "pdf") {
 
             div.innerHTML = `
                 <a href="${msg.text}" target="_blank">
                     📄 Open PDF
                 </a>
+
                 <div class="time">${msg.time}</div>
             `;
 
-        } else if (msg.type === "audio") {
+        }
+
+        // AUDIO
+        else if (msg.type === "audio") {
 
             div.innerHTML = `
                 <audio controls src="${msg.text}"></audio>
+
                 <div class="time">${msg.time}</div>
             `;
 
-        } else {
+        }
+
+        // TEXT
+        else {
 
             div.innerHTML = `
                 <div>${msg.text}</div>
+
                 <div class="time">${msg.time}</div>
             `;
+
         }
 
         messagesDiv.appendChild(div);
+
     });
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
 }
 
+// UPLOAD FILE
 async function uploadFile(file, type) {
 
     const data = new FormData();
 
     data.append("file", file);
+
     data.append("upload_preset", UPLOAD_PRESET);
 
     const res = await fetch(
@@ -174,7 +206,7 @@ async function uploadFile(file, type) {
         from: myEmail,
         to: currentChat,
         text: fileData.secure_url,
-        type,
+        type: type,
         time: new Date().toLocaleTimeString()
     };
 
@@ -183,34 +215,48 @@ async function uploadFile(file, type) {
     socket.emit("private message", msg);
 
     loadMessages();
+
 }
 
-document.getElementById("imageInput").addEventListener("change", (e) => {
+// IMAGE UPLOAD
+document.getElementById("imageInput")
+.addEventListener("change", (e) => {
 
     const file = e.target.files[0];
 
     if (file) {
+
         uploadFile(file, "image");
+
     }
+
 });
 
-document.getElementById("pdfInput").addEventListener("change", (e) => {
+// PDF UPLOAD
+document.getElementById("pdfInput")
+.addEventListener("change", (e) => {
 
     const file = e.target.files[0];
 
     if (file) {
+
         uploadFile(file, "pdf");
+
     }
+
 });
 
+// VOICE NOTES
 let mediaRecorder;
+
 let audioChunks = [];
 
 async function startRecording() {
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true
-    });
+    const stream =
+        await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
 
     mediaRecorder = new MediaRecorder(stream);
 
@@ -219,7 +265,9 @@ async function startRecording() {
     audioChunks = [];
 
     mediaRecorder.ondataavailable = (e) => {
+
         audioChunks.push(e.data);
+
     };
 
     mediaRecorder.onstop = async () => {
@@ -234,9 +282,18 @@ async function startRecording() {
         );
 
         uploadFile(file, "audio");
+
     };
 
     setTimeout(() => {
+
         mediaRecorder.stop();
+
     }, 5000);
+
 }
+
+// GLOBAL FUNCTIONS
+window.login = login;
+window.sendMessage = sendMessage;
+window.startRecording = startRecording;
