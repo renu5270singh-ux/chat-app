@@ -1,146 +1,242 @@
-// 🔌 Connect to Socket.IO
 const socket = io();
 
-// 👤 User state
 let myEmail = "";
-let selectedUser = "";
+let currentChat = "";
 
-// 🔥 Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyCaQswbaEHAjvn90JuFc8xs7ZE3Z3749WM",
-  authDomain: "chat-app-chatex.firebaseapp.com",
-  projectId: "chat-app-chatex",
-  storageBucket: "chat-app-chatex.firebasestorage.app",
-  messagingSenderId: "922683934516",
-  appId: "1:922683934516:web:2a4e396febbc16f8398761",
-  measurementId: "G-XW89SYZMKC"
-};
+const CLOUD_NAME = "dbkmjvnx4";
+const UPLOAD_PRESET = "chatapp";
 
-// 🔥 Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+const usersDiv = document.getElementById("users");
+const messagesDiv = document.getElementById("messages");
 
+function login() {
+    myEmail = document.getElementById("email").value;
 
-// ================= LOGIN =================
-window.login = function () {
-    const email = document.getElementById('email').value.trim();
-
-    if (!email || !email.includes("@")) {
-        alert("Enter valid email");
-        return;
-    }
-
-    myEmail = email;
-
-    socket.emit("join", myEmail);
+    if (!myEmail) return;
 
     document.getElementById("login").style.display = "none";
     document.getElementById("chat").style.display = "flex";
-};
 
+    socket.emit("join", myEmail);
+}
 
-// ================= USER LIST =================
 socket.on("user list", (users) => {
-    const list = document.getElementById("users");
-    list.innerHTML = "";
+
+    usersDiv.innerHTML = "";
 
     users.forEach(user => {
-        if (user !== myEmail) {
-            const div = document.createElement("div");
-            div.innerHTML = `🟢 ${user}`;
-            div.onclick = () => selectUser(user);
-            list.appendChild(div);
-        }
+
+        if (user === myEmail) return;
+
+        const div = document.createElement("div");
+
+        div.className = "user";
+
+        div.innerHTML = `
+            <div class="avatar">${user[0].toUpperCase()}</div>
+            <div>
+                <div>${user}</div>
+                <small class="online">Online</small>
+            </div>
+        `;
+
+        div.onclick = () => {
+            currentChat = user;
+            document.getElementById("chatWith").innerText = user;
+            loadMessages();
+        };
+
+        usersDiv.appendChild(div);
     });
+
 });
 
+async function sendMessage() {
 
-// ================= SELECT USER =================
-function selectUser(user) {
-    selectedUser = user;
-    document.getElementById("messages").innerHTML = "";
-    loadMessages(); // 🔥 load history
-}
-
-
-// ================= SEND MESSAGE =================
-function sendMessage() {
     const input = document.getElementById("msg");
-    const message = input.value.trim();
 
-    if (!message || !selectedUser) return;
+    const text = input.value;
 
-    const msgData = {
+    if (!text || !currentChat) return;
+
+    const msg = {
         from: myEmail,
-        to: selectedUser,
-        message: message,
-        time: Date.now()
+        to: currentChat,
+        text,
+        type: "text",
+        time: new Date().toLocaleTimeString()
     };
 
-    // 🔌 Real-time send
-    socket.emit("private message", msgData);
+    await saveMessage(msg);
 
-    // 🔥 Save to Firebase
-    db.collection("messages").add(msgData);
+    socket.emit("private message", msg);
 
     input.value = "";
+
+    loadMessages();
 }
 
+socket.on("private message", async (msg) => {
 
-// ================= RECEIVE MESSAGE =================
-socket.on("private message", (data) => {
+    await saveMessage(msg);
+
     if (
-        data.from === selectedUser ||
-        data.from === myEmail
+        msg.from === currentChat ||
+        msg.to === currentChat
     ) {
-        addMessage(data.message, data.from, data.time);
+        loadMessages();
     }
 });
 
+async function saveMessage(msg) {
 
-// ================= LOAD CHAT HISTORY =================
-function loadMessages() {
-    db.collection("messages")
-      .orderBy("time")
-      .onSnapshot(snapshot => {
-
-          const container = document.getElementById("messages");
-          container.innerHTML = "";
-
-          snapshot.forEach(doc => {
-              const data = doc.data();
-
-              if (
-                  (data.from === myEmail && data.to === selectedUser) ||
-                  (data.from === selectedUser && data.to === myEmail)
-              ) {
-                  addMessage(data.message, data.from, data.time);
-              }
-          });
-      });
+    await db.collection("messages").add(msg);
 }
 
+async function loadMessages() {
 
-// ================= ADD MESSAGE TO UI =================
-function addMessage(message, sender, time) {
-    const div = document.createElement("div");
-    div.classList.add("message");
+    messagesDiv.innerHTML = "";
 
-    if (sender === myEmail) {
-        div.classList.add("me");
-    } else {
-        div.classList.add("other");
+    const snapshot = await db.collection("messages").get();
+
+    snapshot.forEach(doc => {
+
+        const msg = doc.data();
+
+        const correctChat =
+            (msg.from === myEmail && msg.to === currentChat) ||
+            (msg.from === currentChat && msg.to === myEmail);
+
+        if (!correctChat) return;
+
+        const div = document.createElement("div");
+
+        div.className =
+            msg.from === myEmail
+                ? "myMessage"
+                : "otherMessage";
+
+        if (msg.type === "image") {
+
+            div.innerHTML = `
+                <img src="${msg.text}" class="chatImage">
+                <div class="time">${msg.time}</div>
+            `;
+
+        } else if (msg.type === "pdf") {
+
+            div.innerHTML = `
+                <a href="${msg.text}" target="_blank">
+                    📄 Open PDF
+                </a>
+                <div class="time">${msg.time}</div>
+            `;
+
+        } else if (msg.type === "audio") {
+
+            div.innerHTML = `
+                <audio controls src="${msg.text}"></audio>
+                <div class="time">${msg.time}</div>
+            `;
+
+        } else {
+
+            div.innerHTML = `
+                <div>${msg.text}</div>
+                <div class="time">${msg.time}</div>
+            `;
+        }
+
+        messagesDiv.appendChild(div);
+    });
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+async function uploadFile(file, type) {
+
+    const data = new FormData();
+
+    data.append("file", file);
+    data.append("upload_preset", UPLOAD_PRESET);
+
+    const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+        {
+            method: "POST",
+            body: data
+        }
+    );
+
+    const fileData = await res.json();
+
+    const msg = {
+        from: myEmail,
+        to: currentChat,
+        text: fileData.secure_url,
+        type,
+        time: new Date().toLocaleTimeString()
+    };
+
+    await saveMessage(msg);
+
+    socket.emit("private message", msg);
+
+    loadMessages();
+}
+
+document.getElementById("imageInput").addEventListener("change", (e) => {
+
+    const file = e.target.files[0];
+
+    if (file) {
+        uploadFile(file, "image");
     }
+});
 
-    const date = new Date(time).toLocaleTimeString();
+document.getElementById("pdfInput").addEventListener("change", (e) => {
 
-    div.innerHTML = `
-        <div>${message}</div>
-        <small>${date}</small>
-    `;
+    const file = e.target.files[0];
 
-    document.getElementById("messages").appendChild(div);
+    if (file) {
+        uploadFile(file, "pdf");
+    }
+});
 
-    // auto scroll
-    div.scrollIntoView();
+let mediaRecorder;
+let audioChunks = [];
+
+async function startRecording() {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+    });
+
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.start();
+
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+        audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+
+        const blob = new Blob(audioChunks, {
+            type: "audio/mp3"
+        });
+
+        const file = new File(
+            [blob],
+            "voice.mp3"
+        );
+
+        uploadFile(file, "audio");
+    };
+
+    setTimeout(() => {
+        mediaRecorder.stop();
+    }, 5000);
 }
