@@ -1,61 +1,115 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Chat App</title>
+    <title>Chat App</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN -->
 <div id="login">
-    <h2>Welcome to Chat</h2>
-    <input id="email" placeholder="Enter email (rahul@chat.com)" />
-    <button onclick="login()">Enter</button>
+
+    <div class="loginBox">
+        <h1>💬 Chat App</h1>
+
+        <input
+            type="email"
+            id="email"
+            placeholder="Enter your email"
+        >
+
+        <button onclick="login()">
+            Enter Chat
+        </button>
+    </div>
+
 </div>
 
-<!-- CHAT APP -->
+<!-- MAIN CHAT -->
 <div id="chat" style="display:none;">
 
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <h3>Users</h3>
+
+        <div class="sidebarHeader">
+            Chats
+        </div>
+
         <div id="users"></div>
+
     </div>
 
-    <!-- MAIN CHAT AREA -->
-    <div class="chat-area">
+    <!-- CHAT AREA -->
+    <div class="chatArea">
 
-        <!-- HEADER -->
-        <div class="chat-header">
-            <span id="chatWith">Select a user</span>
+        <!-- TOP -->
+        <div class="chatHeader">
+
+            <div id="chatWith">
+                Select a user
+            </div>
+
         </div>
 
         <!-- MESSAGES -->
         <div id="messages"></div>
 
         <!-- INPUT -->
-        <div class="input-area">
-            <input id="msg" placeholder="Type message..." />
-            <button onclick="sendMessage()">Send</button>
+        <div class="inputArea">
+
+            <input
+                type="text"
+                id="msg"
+                placeholder="Type message..."
+            >
+
+            <!-- IMAGE -->
+            <input type="file" id="imageInput" hidden>
+
+            <!-- PDF -->
+            <input type="file" id="pdfInput" hidden>
+
+            <!-- BUTTONS -->
+            <button onclick="document.getElementById('imageInput').click()">
+                🖼️
+            </button>
+
+            <button onclick="document.getElementById('pdfInput').click()">
+                📄
+            </button>
+
+            <button onclick="startRecording()">
+                🎤
+            </button>
+
+            <button onclick="sendMessage()">
+                ➤
+            </button>
+
         </div>
 
     </div>
 
 </div>
 
-<!-- SCRIPTS -->
+<!-- SOCKET -->
 <script src="/socket.io/socket.io.js"></script>
 
-<!-- 🔥 Firebase (MUST be before app.js) -->
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-<!-- Your app -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<!-- FIREBASE CONFIG -->
+<script src="firebase.js"></script>
+
+<!-- APP -->
 <script src="app.js"></script>
 
 </body>
 </html>
-````
